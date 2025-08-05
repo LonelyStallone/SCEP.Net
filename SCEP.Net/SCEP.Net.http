@@ -1,0 +1,6 @@
+@SCEP.Net_HostAddress = http://localhost:5057
+
+GET {{SCEP.Net_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
