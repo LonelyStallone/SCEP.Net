@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SCEP.Net", "SCEP.Net\SCEP.Net.csproj", "{C95F4EF0-A4B3-4F95-8C53-EF5A4F536103}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SCEP.Net.Tests", "SCEP.Net.Tests\SCEP.Net.Tests.csproj", "{FD902B7D-B2CE-44E6-9216-B182291A50BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{C95F4EF0-A4B3-4F95-8C53-EF5A4F536103}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C95F4EF0-A4B3-4F95-8C53-EF5A4F536103}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C95F4EF0-A4B3-4F95-8C53-EF5A4F536103}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD902B7D-B2CE-44E6-9216-B182291A50BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD902B7D-B2CE-44E6-9216-B182291A50BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD902B7D-B2CE-44E6-9216-B182291A50BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD902B7D-B2CE-44E6-9216-B182291A50BE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

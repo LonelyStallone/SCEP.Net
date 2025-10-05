@@ -1,9 +1,6 @@
 ﻿using System.Numerics;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using System.Runtime.ConstrainedExecution;
-using System.Xml.Linq;
 
 namespace SCEP.Net.Services;
 
@@ -44,5 +41,9 @@ public interface IDepot
         X509Certificate2 certificate,
         bool revokeOldCertificate,
         CancellationToken cancellationToken);
+
+
+    // Init ca_key
+    Task<RSA> CreateOrLoadKeyAsync(int bits, CancellationToken cancellationToken);
 
 }

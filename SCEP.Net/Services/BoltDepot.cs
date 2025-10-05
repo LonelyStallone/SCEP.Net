@@ -13,6 +13,7 @@ public class BoltDepot : IDepot, IDisposable
 
     public BoltDepot(string dbPath)
     {
+        SQLitePCL.Batteries.Init();
         _db = new SqliteConnection($"Data Source={dbPath}");
         _db.Open();
 

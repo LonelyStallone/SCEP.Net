@@ -19,7 +19,7 @@ public class CSRSigner : ICSRSigner
     private readonly int _allowRenewalDays;
     private readonly int _validityDays;
     private readonly bool _serverAttrs;
-    private readonly string? _signatureAlgorithm;
+    private readonly SignatureAlgorithm _signatureAlgorithm;
 
     public CSRSigner(IDepot depot, CSRSignerOptions options = null)
     {
@@ -151,10 +151,10 @@ public class CSRSigner : ICSRSigner
     {
 
         // Create signature factory
-        if (!string.IsNullOrEmpty(_signatureAlgorithm))
+        if (_signatureAlgorithm == SignatureAlgorithm.Unknown)
         {
             return new Asn1SignatureFactory(
-                _signatureAlgorithm,
+                _signatureAlgorithm.ToString(),
                 caPrivateKey);
         }
         else

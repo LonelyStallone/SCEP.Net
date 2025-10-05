@@ -12,5 +12,5 @@ public class CSRSignerOptions
 
     public bool ServerAttrs { get; set; } = false;
 
-    public string? SignatureAlgorithm { get; set; } = null;
+    public SignatureAlgorithm SignatureAlgorithm { get; set; } = SignatureAlgorithm.Unknown;
 }
