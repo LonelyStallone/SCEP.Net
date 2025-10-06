@@ -108,7 +108,6 @@ public class CSRSigner : ICSRSigner
 
         // Convert to X509Certificate2
         var signedCert = new X509Certificate2(DotNetUtilities.ToX509Certificate(bouncyCert));
-        signedCert = signedCert.CopyWithPrivateKey(caKey);
 
         // Check if certificate already exists and needs revocation
         var certName = GetCertName(signedCert);
@@ -151,7 +150,7 @@ public class CSRSigner : ICSRSigner
     {
 
         // Create signature factory
-        if (_signatureAlgorithm == SignatureAlgorithm.Unknown)
+        if (_signatureAlgorithm != SignatureAlgorithm.Unknown)
         {
             return new Asn1SignatureFactory(
                 _signatureAlgorithm.ToString(),

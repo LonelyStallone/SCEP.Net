@@ -2,6 +2,7 @@
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.X509;
 using SCEP.Net.Models;
+using SCEP.Net.Services.Helpers;
 using SCEP.Net.Services.PKI;
 using SCEP.Net.Services.PKI.Enums;
 using System.Security.Cryptography;
@@ -58,14 +59,14 @@ public class PKIMessage
                 switch (attribute.Oid.Value)
                 {
                     case var oid when oid == oidSCEPtransactionID:
-                        msg.TransactionID = Encoding.ASCII.GetString(attribute.Values[0].RawData);
+                        msg.TransactionID = Asn1Helper.DecodePrintableString(attribute.Values[0].RawData);
                         break;
                     case var oid when oid == oidSCEPmessageType:
-                        var type = (PKIMessageType)BitConverter.ToInt32(attribute.Values[0].RawData, 0);
+                        var type = (PKIMessageType)Asn1Helper.DecodeInteger(attribute.Values[0].RawData);
                         msg.MessageType = type;
                         break;
                     case var oid when oid == oidSCEPsenderNonce:
-                        msg.SenderNonce = attribute.Values[0].RawData;
+                        msg.SenderNonce = Asn1Helper.DecodeOctetString(attribute.Values[0].RawData);
                         break;
                 }
             }
@@ -186,18 +187,11 @@ public class PKIMessage
 
     public static byte[] DegenerateCertificates(List<X509Certificate2> certs)
     {
-        var store = new X509Certificate2Collection();
-        store.AddRange(certs.ToArray());
+        var collection = new X509Certificate2Collection();
+        collection.AddRange(certs.ToArray());
 
-        var cms = new SignedCms(new ContentInfo(new Oid("1.2.840.113549.1.7.1"), new byte[0]));
-        cms.ComputeSignature(new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, certs[0]));
-
-        foreach (var cert in certs)
-        {
-            cms.Certificates.Add(cert);
-        }
-
-        return cms.Encode();
+        // Прямое создание PKCS#7 дегенерированной структуры
+        return collection.Export(X509ContentType.Pkcs7);
     }
 
     public static List<X509Certificate2> CACerts(byte[] data)
@@ -233,20 +227,21 @@ public class PKIMessage
         signer.SignedAttributes.Add(
             new AsnEncodedData(
                 new Oid(oidSCEPtransactionID),
-                Encoding.ASCII.GetBytes(tID)
+                Asn1Helper.EncodePrintableString(tID)
             )
         );
 
         signer.SignedAttributes.Add(
             new AsnEncodedData(
                 new Oid(oidSCEPmessageType),
-                BitConverter.GetBytes((int)tmpl.MessageType)
+                Asn1Helper.EncodeInteger((int)tmpl.MessageType)
             )
         );
+
         signer.SignedAttributes.Add(
             new AsnEncodedData(
                 new Oid(oidSCEPsenderNonce),
-                sn
+                Asn1Helper.EncodeOctetString(sn)
             ));
 
         signedData.ComputeSignature(signer);
@@ -354,7 +349,7 @@ public class PKIMessage
         // Use original message recipients for the response
         var recipients = new CmsRecipientCollection(
             SubjectIdentifierType.IssuerAndSerialNumber,
-            new X509Certificate2Collection(Recipients.ToArray()));
+            new X509Certificate2Collection(P7.Certificates.ToArray()));
 
         env.Encrypt(recipients);
         var encryptedData = env.Encode();

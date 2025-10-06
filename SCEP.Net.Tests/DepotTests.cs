@@ -183,4 +183,52 @@ public class DebugTests
         // Assert
         message.ShouldNotBeNull();
     }
+
+    [Fact]
+    public async Task GetCACertAsync4_ShouldReturnCa_WhenCalled()
+    {
+        // Arrange
+        var keySize = 2048;
+        var key = await _boltDepot.CreateOrLoadKeyAsync(keySize, CancellationToken.None);
+        var ca = await _boltDepot.CreateOrLoadCAAsync(key, 5, "MicroMDM", "US", CancellationToken.None);
+        var (certsFromDepot, keyFromDepot) = await _boltDepot.GetCAAsync(_fixture.Create<string>(), CancellationToken.None);
+
+        var caCertificat = certsFromDepot.Single();
+        var privateKey = keyFromDepot;
+        var csrSigner = new CSRSigner(_boltDepot, _cSRSignerOptions);
+        var logger = new Mock<ILogger<SCEPService>>().Object;
+
+        var scepService = new SCEPService(
+           caCertificat,
+           privateKey,
+           csrSigner,
+           logger,
+           Array.Empty<X509Certificate2>().ToList());
+
+        var selfKey = RSA.Create(keySize);
+        var csr = CsrBuilder.GenerateCSR(selfKey, "ou", "loc", "province", "RU", "cname", "org");
+        var signerCert = X509Certificate2Builder.SelfSign(selfKey, csr);
+
+        var rootStore = new X509Certificate2Collection();
+        rootStore.Add(ca);
+
+        var (caBytes, num) = await scepService.GetCACertAsync(_fixture.Create<string>(), CancellationToken.None);
+
+        var tmpl = new PKIMessage
+        {
+            MessageType = PKIMessageType.PKCSReq,
+            Recipients = new[] { caCertificat }.ToList(),
+            SignerKey = selfKey,
+            SignerCert = signerCert,
+        };
+
+
+        var message = PKIMessage.NewCSRRequest(csr, tmpl);
+
+        // Act
+        var respMsgBytes = await scepService.PKIOperationAsync(message.Raw, CancellationToken.None);
+
+        // Assert
+        message.ShouldNotBeNull();
+    }
 }
