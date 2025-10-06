@@ -58,15 +58,15 @@ public class SCEPService : ISCEPService
         {
             msg.DecryptPKIEnvelope(_caCertificate, _privateKey);
 
-            var cert = await _csrSigner.SignCSRAsync(msg.CSRReqMessage, cancellationToken);
-            if (cert == null)
+            var signedCertificate = await _csrSigner.SignCSRAsync(msg.CSRReqMessage, cancellationToken);
+            if (signedCertificate == null)
             {
                 throw new InvalidOperationException("No signed certificate");
             }
 
             // Здесь должна быть реализация Success метода для создания CertRep
             // Это упрощенная версия - в реальности нужно создать соответствующий PKIMessage
-            var certRep = msg.CreateSuccessResponse(cert);
+            var certRep = msg.CreateSuccessResponse(_caCertificate, _privateKey, signedCertificate);
             return certRep.Raw;
         }
         catch (Exception ex)

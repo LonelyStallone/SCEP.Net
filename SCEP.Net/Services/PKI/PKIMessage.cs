@@ -334,54 +334,58 @@ public class PKIMessage
         }
     }
 
-
-    public PKIMessage CreateSuccessResponse(X509Certificate2 signedCert)
+    public PKIMessage CreateSuccessResponse(X509Certificate2 caCertificate, RSA privateKey, X509Certificate2 signedCert)
     {
         if (signedCert == null)
             throw new ArgumentNullException(nameof(signedCert));
+        if (caCertificate == null)
+            throw new ArgumentNullException(nameof(caCertificate));
+        if (privateKey == null)
+            throw new ArgumentNullException(nameof(privateKey));
 
         // Create degenerate certificate structure
         var degenerateCertData = DegenerateCertificates(new List<X509Certificate2> { signedCert });
 
-        // Create enveloped response
-        var env = new EnvelopedCms(new ContentInfo(degenerateCertData));
-
-        // Use original message recipients for the response
+        // Encrypt degenerate data using the original message recipients
         var recipients = new CmsRecipientCollection(
             SubjectIdentifierType.IssuerAndSerialNumber,
             new X509Certificate2Collection(P7.Certificates.ToArray()));
 
+        var env = new EnvelopedCms(new ContentInfo(degenerateCertData));
         env.Encrypt(recipients);
         var encryptedData = env.Encode();
 
         // Create signed response
-        var signedData = new SignedCms(new ContentInfo(encryptedData));
-        var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, SignerCert, SignerKey);
+        var signedData = new SignedCms(new ContentInfo(encryptedData), detached: false);
+        var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, caCertificate, privateKey);
 
-        // Add SCEP attributes
+        // Add the certificate to signed data (must be first in collection)
+        signedData.Certificates.Add(signedCert);
+
+        // Add SCEP attributes - через метод Add, так как SignedAttributes только для чтения
         signer.SignedAttributes.Add(new AsnEncodedData(
             new Oid(oidSCEPtransactionID),
-            Encoding.ASCII.GetBytes(TransactionID))
-        );
-
-        signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPmessageType),
-            BitConverter.GetBytes((int)PKIMessageType.CertRep))
-        );
-
-        signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPsenderNonce),
-            NewNonce())
+            Asn1Helper.EncodePrintableString(TransactionID))
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
             new Oid(oidSCEPpkiStatus),
-            BitConverter.GetBytes((int)PKIStatus.Success))
+            Asn1Helper.EncodeInteger((int)PKIStatus.Success))
+        );
+
+        signer.SignedAttributes.Add(new AsnEncodedData(
+            new Oid(oidSCEPmessageType),
+            Asn1Helper.EncodeInteger((int)PKIMessageType.CertRep))
+        );
+
+        signer.SignedAttributes.Add(new AsnEncodedData(
+            new Oid(oidSCEPsenderNonce),
+            Asn1Helper.EncodeOctetString(SenderNonce)) // Используем существующий nonce, а не создаем новый
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
             new Oid(oidSCEPrecipientNonce),
-            SenderNonce)
+            Asn1Helper.EncodeOctetString(SenderNonce)) // Используем SenderNonce как RecipientNonce
         );
 
         signedData.ComputeSignature(signer);
@@ -392,16 +396,16 @@ public class PKIMessage
             Raw = rawResponse,
             MessageType = PKIMessageType.CertRep,
             TransactionID = TransactionID,
-            SenderNonce = NewNonce(),
+            SenderNonce = SenderNonce, // Используем существующий, а не создаем новый
             CertRepMessage = new CertRepMessage
             {
                 PKIStatus = PKIStatus.Success,
-                RecipientNonce = SenderNonce,
+                RecipientNonce = SenderNonce, // Используем SenderNonce
                 Certificate = signedCert
             },
             Recipients = Recipients,
-            SignerCert = SignerCert,
-            SignerKey = SignerKey
+            SignerCert = caCertificate, // Используем переданный CA сертификат
+            SignerKey = privateKey // Используем переданный приватный ключ
         };
     }
 
