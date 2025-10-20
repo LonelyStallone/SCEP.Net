@@ -1,4 +1,8 @@
-﻿using System.Formats.Asn1;
+﻿using Org.BouncyCastle.Asn1;
+using System.Formats.Asn1;
+using System.Security.Cryptography;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Text;
 
 namespace SCEP.Net.Services.Helpers;
 
@@ -6,15 +10,21 @@ public static class Asn1Helper
 {
     public static byte[] EncodeInteger(int value)
     {
-        var asnWriter = new AsnWriter(AsnEncodingRules.BER);
-        asnWriter.WriteInteger(value);
+        // Конвертируем число в строку
+        string stringValue = value.ToString();
 
-        return asnWriter.Encode();
+        // Кодируем как PrintableString
+        var writer = new AsnWriter(AsnEncodingRules.BER);
+        writer.WriteCharacterString(
+            UniversalTagNumber.PrintableString,
+            stringValue);
+
+        return writer.Encode();
     }
 
     public static byte[] EncodePrintableString(string value)
     {
-        var asnWriter = new AsnWriter(AsnEncodingRules.BER);
+        var asnWriter = new AsnWriter(AsnEncodingRules.DER);
 
         asnWriter.WriteCharacterString(UniversalTagNumber.PrintableString, value);
         return asnWriter.Encode();
@@ -46,13 +56,16 @@ public static class Asn1Helper
 
     public static int DecodeInteger(byte[] asn1Data)
     {
-        var reader = new AsnReader(asn1Data, AsnEncodingRules.DER);
-        var bigInt = reader.ReadInteger();
+        var reader = new AsnReader(asn1Data, AsnEncodingRules.BER);
 
-        if (bigInt < int.MinValue || bigInt > int.MaxValue)
-            throw new ArgumentException("Integer value too large for int32");
+        // Тег 19 = PrintableString (Universal tag 19)
+        string printableString = reader.ReadCharacterString(
+            UniversalTagNumber.PrintableString);
 
-        return (int)bigInt;
+        // Парсим строку как число
+        int result = int.Parse(printableString);
+
+        return result;
     }
 }
 

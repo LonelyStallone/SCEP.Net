@@ -218,6 +218,15 @@ public class BoltDepot : IDepot, IDisposable
         return newKey;
     }
 
+    public async Task SaveKeyAsync(RSA key, CancellationToken cancellationToken)
+    {
+        using var command = _db.CreateCommand();
+        command.CommandText = $"INSERT OR REPLACE INTO {CertBucket} (key, value) VALUES (@key, @value)";
+        command.Parameters.AddWithValue("@key", "ca_key");
+        command.Parameters.AddWithValue("@value", key.ExportPkcs8PrivateKey());
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     public async Task<X509Certificate2> CreateOrLoadCAAsync(
         RSA key,
         int years,

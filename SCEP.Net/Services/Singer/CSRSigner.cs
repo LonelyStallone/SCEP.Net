@@ -21,7 +21,7 @@ public class CSRSigner : ICSRSigner
     private readonly bool _serverAttrs;
     private readonly SignatureAlgorithm _signatureAlgorithm;
 
-    public CSRSigner(IDepot depot, CSRSignerOptions options = null)
+    public CSRSigner(IDepot depot, CSRSignerOptions options)
     {
         _depot = depot ?? throw new ArgumentNullException(nameof(depot));
         options ??= new CSRSignerOptions();

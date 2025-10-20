@@ -46,4 +46,6 @@ public interface IDepot
     // Init ca_key
     Task<RSA> CreateOrLoadKeyAsync(int bits, CancellationToken cancellationToken);
 
+    Task SaveKeyAsync(RSA key, CancellationToken cancellationToken);
+
 }
