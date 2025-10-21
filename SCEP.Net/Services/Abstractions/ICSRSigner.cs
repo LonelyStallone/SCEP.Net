@@ -1,7 +1,7 @@
 ﻿using SCEP.Net.Models;
 using System.Security.Cryptography.X509Certificates;
 
-namespace SCEP.Net.Services.Singer;
+namespace SCEP.Net.Services.Abstractions;
 
 public interface ICSRSigner
 {

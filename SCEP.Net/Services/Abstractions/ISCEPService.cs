@@ -1,4 +1,4 @@
-﻿namespace SCEP.Net.Services;
+﻿namespace SCEP.Net.Services.Abstractions;
 
 public interface ISCEPService
 {

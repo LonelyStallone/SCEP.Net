@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Asn1;
+﻿using Microsoft.Extensions.Options;
+using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Operators;
@@ -6,7 +7,9 @@ using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
 using SCEP.Net.Models;
-using SCEP.Net.Services.Singer;
+using SCEP.Net.Services.Abstractions;
+using SCEP.Net.Services.Enums;
+using SCEP.Net.Services.Options;
 using System.Security.Cryptography.X509Certificates;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
@@ -21,16 +24,14 @@ public class CSRSigner : ICSRSigner
     private readonly bool _serverAttrs;
     private readonly SignatureAlgorithm _signatureAlgorithm;
 
-    public CSRSigner(IDepot depot, CSRSignerOptions options)
+    public CSRSigner(IDepot depot, IOptions<CSRSignerOptions> options)
     {
-        _depot = depot ?? throw new ArgumentNullException(nameof(depot));
-        options ??= new CSRSignerOptions();
-
-        _caPass = options.CAPass;
-        _allowRenewalDays = options.AllowRenewalDays;
-        _validityDays = options.ValidityDays;
-        _serverAttrs = options.ServerAttrs;
-        _signatureAlgorithm = options.SignatureAlgorithm;
+        _depot = depot;
+        _caPass = options.Value.CAPass;
+        _allowRenewalDays = options.Value.AllowRenewalDays;
+        _validityDays = options.Value.ValidityDays;
+        _serverAttrs = options.Value.ServerAttrs;
+        _signatureAlgorithm = options.Value.SignatureAlgorithm;
     }
 
     public async Task<X509Certificate2> SignCSRAsync(CSRReqMessage csrReq, CancellationToken cancellationToken)

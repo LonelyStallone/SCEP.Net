@@ -1,6 +1,7 @@
-﻿using System.Security.Cryptography.X509Certificates;
+﻿using SCEP.Net.Services.Enums;
+using System.Security.Cryptography.X509Certificates;
 
-namespace SCEP.Net.Services.Singer;
+namespace SCEP.Net.Services.Options;
 
 public class CSRSignerOptions
 {

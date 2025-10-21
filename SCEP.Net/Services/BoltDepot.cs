@@ -1,34 +1,21 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using Microsoft.Extensions.Options;
+using SCEP.Net.Services.Abstractions;
+using SCEP.Net.Services.Options;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace SCEP.Net.Services;
 
-public class BoltDepot : IDepot, IDisposable
+public class BoltDepot : IDepot
 {
-    private readonly SqliteConnection _db;
-    private readonly SemaphoreSlim _serialLock = new(1, 1);
-    private const string CertBucket = "scep_certificates";
+    private readonly ISerialNumberGenerator _serialNumberGenerator;
+    private readonly IDbAdapter _dbAdapter;
 
-    public BoltDepot(string dbPath)
+    public BoltDepot(ISerialNumberGenerator serialNumberGenerator, IDbAdapter dbAdapter)
     {
-        SQLitePCL.Batteries.Init();
-        _db = new SqliteConnection($"Data Source={dbPath}");
-        _db.Open();
-
-        InitializeDatabase();
-    }
-
-    private void InitializeDatabase()
-    {
-        using var command = _db.CreateCommand();
-        command.CommandText = $@"
-            CREATE TABLE IF NOT EXISTS {CertBucket} (
-                key TEXT PRIMARY KEY,
-                value BLOB
-            )";
-        command.ExecuteNonQuery();
+        _serialNumberGenerator = serialNumberGenerator;
+        _dbAdapter = dbAdapter;
     }
 
     public async Task<(X509Certificate2[], RSA)> GetCAAsync(string password, CancellationToken cancellationToken)
@@ -36,12 +23,7 @@ public class BoltDepot : IDepot, IDisposable
         var chain = new List<X509Certificate2>();
         RSA? key = null;
 
-        using var command = _db.CreateCommand();
-        command.CommandText = $"SELECT value FROM {CertBucket} WHERE key = @key";
-
-        // Get CA certificate
-        command.Parameters.AddWithValue("@key", "ca_certificate");
-        var caCertBytes = (byte[]?)await command.ExecuteScalarAsync(cancellationToken);
+        var caCertBytes = await _dbAdapter.GetValueAsync("ca_certificate", cancellationToken);
 
         if (caCertBytes == null || caCertBytes.Length == 0)
         {
@@ -51,9 +33,7 @@ public class BoltDepot : IDepot, IDisposable
         chain.Add(new X509Certificate2(caCertBytes));
 
         // Get CA key
-        command.Parameters.Clear();
-        command.Parameters.AddWithValue("@key", "ca_key");
-        var caKeyBytes = (byte[]?)await command.ExecuteScalarAsync(cancellationToken);
+        var caKeyBytes = await _dbAdapter.GetValueAsync("ca_key", cancellationToken);
 
         if (caKeyBytes == null || caKeyBytes.Length == 0)
         {
@@ -75,81 +55,12 @@ public class BoltDepot : IDepot, IDisposable
 
         var fullName = $"{name}.{certificate.SerialNumber}";
 
-        using var command = _db.CreateCommand();
-        command.CommandText = $@"
-            INSERT OR REPLACE INTO {CertBucket} (key, value)
-            VALUES (@key, @value)";
-
-        command.Parameters.AddWithValue("@key", fullName);
-        command.Parameters.AddWithValue("@value", certificate.RawData);
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await _dbAdapter.SetValueAsync(fullName, certificate.RawData, cancellationToken);
     }
 
     public async Task<BigInteger> GetSerialAsync(CancellationToken cancellationToken)
     {
-        await _serialLock.WaitAsync(cancellationToken);
-        try
-        {
-            var serial = await ReadSerialAsync(cancellationToken);
-            await IncrementSerialAsync(serial, cancellationToken);
-            return serial;
-        }
-        finally
-        {
-            _serialLock.Release();
-        }
-    }
-
-    private async Task<BigInteger> ReadSerialAsync(CancellationToken cancellationToken)
-    {
-        if (!await HasKeyAsync("serial", cancellationToken))
-        {
-            var initialSerial = new BigInteger(2);
-            await WriteSerialAsync(initialSerial, cancellationToken);
-            return initialSerial;
-        }
-
-        using var command = _db.CreateCommand();
-        command.CommandText = $"SELECT value FROM {CertBucket} WHERE key = @key";
-        command.Parameters.AddWithValue("@key", "serial");
-
-        var serialBytes = (byte[]?)await command.ExecuteScalarAsync(cancellationToken);
-        if (serialBytes == null || serialBytes.Length == 0)
-        {
-            throw new InvalidOperationException("Serial key not found");
-        }
-
-        return new BigInteger(serialBytes);
-    }
-
-    private async Task<bool> HasKeyAsync(string key, CancellationToken cancellationToken)
-    {
-        using var command = _db.CreateCommand();
-        command.CommandText = $"SELECT 1 FROM {CertBucket} WHERE key = @key LIMIT 1";
-        command.Parameters.AddWithValue("@key", key);
-
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        return result != null;
-    }
-
-    private async Task WriteSerialAsync(BigInteger serial, CancellationToken cancellationToken)
-    {
-        using var command = _db.CreateCommand();
-        command.CommandText = $@"
-            INSERT OR REPLACE INTO {CertBucket} (key, value)
-            VALUES (@key, @value)";
-
-        command.Parameters.AddWithValue("@key", "serial");
-        command.Parameters.AddWithValue("@value", serial.ToByteArray());
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    private async Task IncrementSerialAsync(BigInteger current, CancellationToken cancellationToken)
-    {
-        var newSerial = current + BigInteger.One;
-        await WriteSerialAsync(newSerial, cancellationToken);
+        return await _serialNumberGenerator.GetNextSerialNumberAsync(cancellationToken);
     }
 
     public async Task<bool> HasCNAsync(
@@ -159,135 +70,37 @@ public class BoltDepot : IDepot, IDisposable
         bool revokeOldCertificate,
         CancellationToken cancellationToken)
     {
-        if (certificate == null)
-        {
-            throw new ArgumentNullException(nameof(certificate));
-        }
-
-        bool hasCN = false;
-
-        using var command = _db.CreateCommand();
-        command.CommandText = $@"
-            SELECT value FROM {CertBucket} 
-            WHERE key LIKE @prefix || '%'";
-
-        command.Parameters.AddWithValue("@prefix", commonName);
-
-        using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            var certBytes = (byte[])reader["value"];
-            if (certBytes.SequenceEqual(certificate.RawData))
-            {
-                hasCN = true;
-                break;
-            }
-        }
-
-        return hasCN;
+        return await _dbAdapter.HasCnAsync(commonName, certificate, cancellationToken);
     }
 
-    public async Task<RSA> CreateOrLoadKeyAsync(int bits, CancellationToken cancellationToken)
+    public async Task InitilizeCaAsync(IOptions<BoltDepotOptions> options, CancellationToken cancellationToken)
     {
-        using var command = _db.CreateCommand();
-        command.CommandText = $"SELECT value FROM {CertBucket} WHERE key = @key";
-        command.Parameters.AddWithValue("@key", "ca_key");
+        var boltOptions = options.Value;
+        using var rsa = RSA.Create();
+        rsa.ImportFromPem(boltOptions.CertKey);
 
-        var keyBytes = (byte[]?)await command.ExecuteScalarAsync(cancellationToken);
+        var certificate = GetCertificateFromPem(boltOptions.CertPem);
 
-        if (keyBytes != null && keyBytes.Length > 0)
-        {
-            var key = RSA.Create();
-            key.ImportPkcs8PrivateKey(keyBytes, out _);
-            return key;
-        }
-
-        var newKey = RSA.Create(bits);
-        var pkcs8 = newKey.ExportPkcs8PrivateKey();
-
-        using var insertCommand = _db.CreateCommand();
-        insertCommand.CommandText = $@"
-            INSERT INTO {CertBucket} (key, value)
-            VALUES (@key, @value)";
-
-        insertCommand.Parameters.AddWithValue("@key", "ca_key");
-        insertCommand.Parameters.AddWithValue("@value", pkcs8);
-
-        await insertCommand.ExecuteNonQueryAsync(cancellationToken);
-
-        return newKey;
+        await InitilizeCaAsync(rsa, certificate, cancellationToken);
     }
 
-    public async Task SaveKeyAsync(RSA key, CancellationToken cancellationToken)
+    private async Task InitilizeCaAsync(RSA key, X509Certificate2 certificate2, CancellationToken cancellationToken)
     {
-        using var command = _db.CreateCommand();
-        command.CommandText = $"INSERT OR REPLACE INTO {CertBucket} (key, value) VALUES (@key, @value)";
-        command.Parameters.AddWithValue("@key", "ca_key");
-        command.Parameters.AddWithValue("@value", key.ExportPkcs8PrivateKey());
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await _dbAdapter.SetValueAsync("ca_key", key.ExportPkcs8PrivateKey(), cancellationToken);
+        await _dbAdapter.SetValueAsync("ca_certificate", certificate2.RawData, cancellationToken);
     }
 
-    public async Task<X509Certificate2> CreateOrLoadCAAsync(
-        RSA key,
-        int years,
-        string org,
-        string country,
-        CancellationToken cancellationToken)
+    private static X509Certificate2 GetCertificateFromPem(string pemString)
     {
-        using var command = _db.CreateCommand();
-        command.CommandText = $"SELECT value FROM {CertBucket} WHERE key = @key";
-        command.Parameters.AddWithValue("@key", "ca_certificate");
+        // Удаляем заголовки и подвалы PEM
+        string base64 = pemString
+            .Replace("-----BEGIN CERTIFICATE-----", "")
+            .Replace("-----END CERTIFICATE-----", "")
+            .Replace("\n", "")
+            .Replace("\r", "")
+            .Trim();
 
-        var certBytes = (byte[]?)await command.ExecuteScalarAsync(cancellationToken);
-
-        if (certBytes != null && certBytes.Length > 0)
-        {
-            return new X509Certificate2(certBytes);
-        }
-
-        // Create new CA certificate
-        var subject = new X500DistinguishedName(
-            $"CN=SCEP CA, O={org}, OU=MICROMDM SCEP CA, C={country}");
-
-        var request = new CertificateRequest(
-            subject,
-            key,
-            HashAlgorithmName.SHA256,
-            RSASignaturePadding.Pkcs1);
-
-        request.CertificateExtensions.Add(
-            new X509BasicConstraintsExtension(true, false, 0, true));
-
-        request.CertificateExtensions.Add(
-            new X509KeyUsageExtension(
-                X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign,
-                true));
-
-        var notBefore = DateTimeOffset.UtcNow;
-        var notAfter = notBefore.AddYears(years);
-
-        var serial = new byte[16];
-        RandomNumberGenerator.Fill(serial);
-
-        using var caCert = request.CreateSelfSigned(notBefore, notAfter);
-        var rawData = caCert.Export(X509ContentType.Cert);
-
-        using var insertCommand = _db.CreateCommand();
-        insertCommand.CommandText = $@"
-            INSERT INTO {CertBucket} (key, value)
-            VALUES (@key, @value)";
-
-        insertCommand.Parameters.AddWithValue("@key", "ca_certificate");
-        insertCommand.Parameters.AddWithValue("@value", rawData);
-
-        await insertCommand.ExecuteNonQueryAsync(cancellationToken);
-
-        return new X509Certificate2(rawData);
-    }
-
-    public void Dispose()
-    {
-        _serialLock.Dispose();
-        _db.Dispose();
+        byte[] certData = Convert.FromBase64String(base64);
+        return new X509Certificate2(certData);
     }
 }

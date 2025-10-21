@@ -1,4 +1,4 @@
-﻿using SCEP.Net.Services.PKI.Enums;
+﻿using SCEP.Net.Services.Enums;
 using System.Security.Cryptography.X509Certificates;
 
 namespace SCEP.Net.Models;

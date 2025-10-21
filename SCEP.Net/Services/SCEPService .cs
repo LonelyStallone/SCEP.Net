@@ -1,8 +1,7 @@
-﻿using SCEP.Net.Services.Singer;
-using SCEP.Net.Services;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using SCEP.Net.Services.PKI.Enums;
+using SCEP.Net.Services.Abstractions;
+using SCEP.Net.Services.Enums;
 
 public class SCEPService : ISCEPService
 {
@@ -11,7 +10,7 @@ public class SCEPService : ISCEPService
     private readonly List<X509Certificate2> _additionalCaCerts;
     private readonly ICSRSigner _csrSigner;
     private readonly ILogger _logger;
-
+     
     public SCEPService(
         X509Certificate2 caCertificate,
         RSA privateKey,

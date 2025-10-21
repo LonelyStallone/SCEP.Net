@@ -2,9 +2,8 @@
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.X509;
 using SCEP.Net.Models;
+using SCEP.Net.Services.Enums;
 using SCEP.Net.Services.Helpers;
-using SCEP.Net.Services.PKI;
-using SCEP.Net.Services.PKI.Enums;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
@@ -159,7 +158,7 @@ public class PKIMessage
                         }
 
                         // Extract challenge password if present
-                        var cp = ChallengePasswordExtractor.ExtractChallengePassword(PkiEnvelope);
+                        var cp = ChallengePasswordHelper.ExtractChallengePassword(PkiEnvelope);
 
                         CSRReqMessage = new CSRReqMessage
                         {

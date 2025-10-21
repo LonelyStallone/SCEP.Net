@@ -1,4 +1,4 @@
-﻿namespace SCEP.Net.Services.PKI.Enums;
+﻿namespace SCEP.Net.Services.Enums;
 
 public enum PKIMessageType
 {

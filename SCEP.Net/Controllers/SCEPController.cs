@@ -1,7 +1,7 @@
 using System.Text;
 using SCEP.Net.Models;
-using SCEP.Net.Services;
 using Microsoft.AspNetCore.Mvc;
+using SCEP.Net.Services.Abstractions;
 
 namespace SCEP.Net;
 

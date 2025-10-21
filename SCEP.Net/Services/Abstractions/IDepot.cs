@@ -1,8 +1,10 @@
 ﻿using System.Numerics;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Options;
+using SCEP.Net.Services.Options;
 
-namespace SCEP.Net.Services;
+namespace SCEP.Net.Services.Abstractions;
 
 public interface IDepot
 {
@@ -42,10 +44,5 @@ public interface IDepot
         bool revokeOldCertificate,
         CancellationToken cancellationToken);
 
-
-    // Init ca_key
-    Task<RSA> CreateOrLoadKeyAsync(int bits, CancellationToken cancellationToken);
-
-    Task SaveKeyAsync(RSA key, CancellationToken cancellationToken);
-
+    Task InitilizeCaAsync(IOptions<BoltDepotOptions> options, CancellationToken cancellationToken);
 }

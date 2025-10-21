@@ -1,5 +1,5 @@
 using SCEP.Net.Services;
-using SCEP.Net.Services.Singer;
+using SCEP.Net.Services.Abstractions;
 using System.IO;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -36,8 +36,11 @@ builder.Services.AddSingleton<IDepot, BoltDepot>((sp) =>
 builder.Services.AddScoped<ICSRSigner, CSRSigner>();
 builder.Services.AddScoped<ISCEPService, SCEPService>(sp =>
 {
+    var depot = sp.GetRequiredService<IDepot>();
     var signer = sp.GetRequiredService<ICSRSigner>();
     var logger = sp.GetRequiredService<ILogger<SCEPService>>();
+
+    depot.GetCA
 
     return new SCEPService(ca, key, signer, logger, new List<X509Certificate2>());
 });
@@ -57,5 +60,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+
 
 await app.RunAsync();

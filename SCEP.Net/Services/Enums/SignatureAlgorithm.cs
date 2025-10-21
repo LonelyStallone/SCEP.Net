@@ -1,8 +1,8 @@
-﻿namespace SCEP.Net.Services.Singer;
+﻿namespace SCEP.Net.Services.Enums;
 
 public enum SignatureAlgorithm
 {
-	Unknown,
+    Unknown,
     MD2WithRSA,  // Unsupported.
     MD5WithRSA,  // Only supported for signing, not verification.
     SHA1WithRSA, // Only supported for signing, and verification of CRLs, CSRs, and OCSP responses.

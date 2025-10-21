@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography;
 using Org.BouncyCastle.Pkcs;
-using SCEP.Net.Services.PKI.Enums;
+using SCEP.Net.Services.Enums;
 
 namespace SCEP.Net.Models;
 

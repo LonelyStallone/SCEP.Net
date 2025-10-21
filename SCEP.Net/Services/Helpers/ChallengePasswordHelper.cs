@@ -1,12 +1,9 @@
-﻿using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using Org.BouncyCastle.Asn1;
+﻿using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Pkcs;
-using Org.BouncyCastle.Pkcs;
 
-namespace SCEP.Net.Services.PKI;
+namespace SCEP.Net.Services.Helpers;
 
-public static class ChallengePasswordExtractor
+public static class ChallengePasswordHelper
 {
     public static string ExtractChallengePassword(byte[] csrData)
     {
