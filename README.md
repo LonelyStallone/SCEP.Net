@@ -1,50 +1,19 @@
-public interface IPluginManager
-{
-    Task StartAsync(CancellationToken cancellationToken);
+# SCEP.Net
 
-    Task StopAsync(CancellationToken cancellationToken);
-}
+## A Modern .NET Fork of MicroMDM SCEP
 
-public interface IPluginRegistry
-{
-    Task<IReadOnlyCollection<IPluginContainer>> LoadAsync(IReadOnlyCollection<IPluginMetadata> pluginMetadatas, CancellationToken cancellationToken);
+**SCEP.Net** is a robust server implementation of the Simple Certificate Enrollment Protocol (SCEP), built on the modern .NET platform. Originating as a fork of the popular MicroMDM SCEP service, this project is engineered from the ground up to provide a seamless and secure certificate enrollment experience for modern device management.
 
-    Task<IReadOnlyCollection<IPluginMetadata>> GetValidPluginVersions(CancellationToken cancellationToken);
-}
+### Core Purpose
 
-public interface IPluginContainerStorage
-{
-    Task<IReadOnlyCollection<IPluginMetadata>> GetPluginsAsync(CancellationToken cancellationToken);
+At its heart, SCEP.Net solves a critical challenge in device management: automated and secure certificate provisioning. It acts as a dedicated certificate authority, enabling you to:
 
-    Task AddPluginsAsync(IReadOnlyCollection<IPluginContainer> pluginContainers, CancellationToken cancellationToken);
+*   **Enroll Devices Effortlessly:** Automate the process of issuing client certificates to a wide range of devices—from mobile phones and laptops to IoT equipment—using the standardized SCEP protocol.
+*   **Streamline Certificate Lifecycle:** Manage the entire certificate issuance process through a simple, API-driven interface, seamlessly integrating with your existing MDM (Mobile Device Management) or enterprise PKI infrastructure.
 
-    Task<IPluginContainer> GetPluginContainerAsync(IPluginMetadata plugin, CancellationToken cancellationToken);
+### Key Features
 
-    Task<IPluginContainer> RemovePluginContainerAsync(IPluginMetadata plugin, CancellationToken cancellationToken);
-}
-
-public interface IPluginFactory
-{
-    IPlugin Create(IPluginMetadata pluginMetadata);
-}
-
-public interface IPlugin : IPluginMetadata
-{
-    Task StartAsync(CancellationToken cancellationToken);
-
-    Task StopAsync(CancellationToken cancellationToken);
-}
-
-public interface IPluginContainer : IPluginMetadata
-{
-    byte[] Data { get; }
-}
-
-public interface IPluginMetadata
-{
-    Version Version { get; }
-
-    string Name { get; }
-}
-
-Напиши реализацию IPluginManager, он должен получить список валидных плагинов, если каких то плагинов нет в хранилище, то загрузить их в хранилище, так же он должен хранить мапу запущенных плагинов и в случае чего останавливать плагин, если его версия изменилась. И запускать актуальный
+*   **.NET Powerhouse:** Leverages the performance, scalability, and cross-platform capabilities of the .NET runtime.
+*   **SCEP Protocol Compliance:** Fully implements the SCEP protocol for reliable interoperability with a vast array of clients.
+*   **Seamless MDM Integration:** The perfect backend companion for MDM solutions like MicroMDM, enabling zero-touch device enrollment and configuration.
+*   **Designed for Automation:** Provides clean APIs for integration into automated workflows and modern DevOps practices.
