@@ -1,9 +1,9 @@
 ﻿using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.X509;
-using SCEP.Net.Models;
 using SCEP.Net.Services.Enums;
 using SCEP.Net.Services.Helpers;
+using SCEP.Net.Services.PKI;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
@@ -12,11 +12,11 @@ using System.Text;
 
 public class PKIMessage
 {
-    public string TransactionID { get; set; }
-    public PKIMessageType MessageType { get; set; }
+    public string TransactionId { get; set; }
+    public PkiMessageType MessageType { get; set; }
     public byte[] SenderNonce { get; set; }
     public CertRepMessage CertRepMessage { get; set; }
-    public CSRReqMessage CSRReqMessage { get; set; }
+    public CsrReqMessage CsrReqMessage { get; set; }
     public byte[] Raw { get; set; }
     public SignedCms P7 { get; set; }
     public byte[] PkiEnvelope { get; set; }
@@ -25,12 +25,12 @@ public class PKIMessage
     public X509Certificate2 SignerCert { get; set; }
 
     // SCEP OIDs
-    private static readonly string oidSCEPmessageType = "2.16.840.1.113733.1.9.2";
-    private static readonly string oidSCEPpkiStatus = "2.16.840.1.113733.1.9.3";
-    private static readonly string oidSCEPfailInfo = "2.16.840.1.113733.1.9.4";
-    private static readonly string oidSCEPsenderNonce = "2.16.840.1.113733.1.9.5";
-    private static readonly string oidSCEPrecipientNonce = "2.16.840.1.113733.1.9.6";
-    private static readonly string oidSCEPtransactionID = "2.16.840.1.113733.1.9.7";
+    private static readonly string oidScepMessageType = "2.16.840.1.113733.1.9.2";
+    private static readonly string oidScepPkiStatus = "2.16.840.1.113733.1.9.3";
+    private static readonly string oidScepFailInfo = "2.16.840.1.113733.1.9.4";
+    private static readonly string oidScepSenderNonce = "2.16.840.1.113733.1.9.5";
+    private static readonly string oidScepRecipientNonce = "2.16.840.1.113733.1.9.6";
+    private static readonly string oidScepTransactionId = "2.16.840.1.113733.1.9.7";
 
     public static PKIMessage Parse(byte[] data, List<X509Certificate2> caCerts = null)
     {
@@ -57,14 +57,14 @@ public class PKIMessage
             {
                 switch (attribute.Oid.Value)
                 {
-                    case var oid when oid == oidSCEPtransactionID:
-                        msg.TransactionID = Asn1Helper.DecodePrintableString(attribute.Values[0].RawData);
+                    case var oid when oid == oidScepTransactionId:
+                        msg.TransactionId = Asn1Helper.DecodePrintableString(attribute.Values[0].RawData);
                         break;
-                    case var oid when oid == oidSCEPmessageType:
-                        var type = (PKIMessageType)Asn1Helper.DecodeInteger(attribute.Values[0].RawData);
+                    case var oid when oid == oidScepMessageType:
+                        var type = (PkiMessageType)Asn1Helper.DecodeInteger(attribute.Values[0].RawData);
                         msg.MessageType = type;
                         break;
-                    case var oid when oid == oidSCEPsenderNonce:
+                    case var oid when oid == oidScepSenderNonce:
                         msg.SenderNonce = Asn1Helper.DecodeOctetString(attribute.Values[0].RawData);
                         break;
                 }
@@ -79,8 +79,8 @@ public class PKIMessage
     {
         switch (MessageType)
         {
-            case PKIMessageType.CertRep:
-                var status = PKIStatus.Success; // Would extract from attributes
+            case PkiMessageType.CertRep:
+                var status = PkiStatus.Success; // Would extract from attributes
                 var rn = new byte[0]; // Would extract recipient nonce
 
                 CertRepMessage = new CertRepMessage
@@ -89,16 +89,16 @@ public class PKIMessage
                     RecipientNonce = rn
                 };
 
-                if (status == PKIStatus.Failure)
+                if (status == PkiStatus.Failure)
                 {
                     // Extract failInfo
-                    CertRepMessage.FailInfo = PKIFailInfo.BadRequest;
+                    CertRepMessage.FailInfo = PkiFailInfo.BadRequest;
                 }
                 break;
 
-            case PKIMessageType.PKCSReq:
-            case PKIMessageType.UpdateReq:
-            case PKIMessageType.RenewalReq:
+            case PkiMessageType.PKCSReq:
+            case PkiMessageType.UpdateReq:
+            case PkiMessageType.RenewalReq:
                 if (SenderNonce == null || SenderNonce.Length == 0)
                 {
                     throw new Exception("scep: pkiMessage must include senderNonce attribute");
@@ -137,7 +137,7 @@ public class PKIMessage
             // Process the decrypted content based on message type
             switch (MessageType)
             {
-                case PKIMessageType.CertRep:
+                case PkiMessageType.CertRep:
                     var certs = CACerts(PkiEnvelope);
                     if (certs == null || certs.Count == 0)
                     {
@@ -146,9 +146,9 @@ public class PKIMessage
                     CertRepMessage.Certificate = certs[0];
                     break;
 
-                case PKIMessageType.PKCSReq:
-                case PKIMessageType.UpdateReq:
-                case PKIMessageType.RenewalReq:
+                case PkiMessageType.PKCSReq:
+                case PkiMessageType.UpdateReq:
+                case PkiMessageType.RenewalReq:
                     try
                     {
                         var csr = new Pkcs10CertificationRequest(PkiEnvelope);
@@ -160,10 +160,10 @@ public class PKIMessage
                         // Extract challenge password if present
                         var cp = ChallengePasswordHelper.ExtractChallengePassword(PkiEnvelope);
 
-                        CSRReqMessage = new CSRReqMessage
+                        CsrReqMessage = new CsrReqMessage
                         {
                             RawDecrypted = PkiEnvelope,
-                            CSR = csr,
+                            Csr = csr,
                             ChallengePassword = cp
                         };
                     }
@@ -181,16 +181,6 @@ public class PKIMessage
         {
             throw new CryptographicException("Failed to decrypt PKI envelope", ex);
         }
-    }
-
-
-    public static byte[] DegenerateCertificates(List<X509Certificate2> certs)
-    {
-        var collection = new X509Certificate2Collection();
-        collection.AddRange(certs.ToArray());
-
-        // Прямое создание PKCS#7 дегенерированной структуры
-        return collection.Export(X509ContentType.Pkcs7);
     }
 
     public static List<X509Certificate2> CACerts(byte[] data)
@@ -225,21 +215,21 @@ public class PKIMessage
         var signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, tmpl.SignerCert, tmpl.SignerKey);
         signer.SignedAttributes.Add(
             new AsnEncodedData(
-                new Oid(oidSCEPtransactionID),
+                new Oid(oidScepTransactionId),
                 Asn1Helper.EncodePrintableString(tID)
             )
         );
 
         signer.SignedAttributes.Add(
             new AsnEncodedData(
-                new Oid(oidSCEPmessageType),
+                new Oid(oidScepMessageType),
                 Asn1Helper.EncodeInteger((int)tmpl.MessageType)
             )
         );
 
         signer.SignedAttributes.Add(
             new AsnEncodedData(
-                new Oid(oidSCEPsenderNonce),
+                new Oid(oidScepSenderNonce),
                 Asn1Helper.EncodeOctetString(sn)
             ));
 
@@ -250,9 +240,9 @@ public class PKIMessage
         {
             Raw = rawPKIMessage,
             MessageType = tmpl.MessageType,
-            TransactionID = tID,
+            TransactionId = tID,
             SenderNonce = sn,
-            CSRReqMessage = new CSRReqMessage { CSR = csr },
+            CsrReqMessage = new CsrReqMessage { Csr = csr },
             Recipients = recipients
         };
     }
@@ -324,7 +314,7 @@ public class PKIMessage
                 return Convert.ToBase64String(hash)
                     .TrimEnd('=')
                     .Replace('+', '-')
-                    .Replace('/', '_');
+                    .Replace('/', '-');
             }
         }
         catch (Exception ex)
@@ -343,7 +333,7 @@ public class PKIMessage
             throw new ArgumentNullException(nameof(privateKey));
 
         // Create degenerate certificate structure
-        var degenerateCertData = DegenerateCertificates(new List<X509Certificate2> { signedCert });
+        var degenerateCertData = PkcsHelper.DegenerateCertificates(new List<X509Certificate2> { signedCert });
 
         // Encrypt degenerate data using the original message recipients
         var recipients = new CmsRecipientCollection(
@@ -363,27 +353,27 @@ public class PKIMessage
 
         // Add SCEP attributes - через метод Add, так как SignedAttributes только для чтения
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPtransactionID),
-            Asn1Helper.EncodePrintableString(TransactionID))
+            new Oid(oidScepTransactionId),
+            Asn1Helper.EncodePrintableString(TransactionId))
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPpkiStatus),
-            Asn1Helper.EncodeInteger((int)PKIStatus.Success))
+            new Oid(oidScepPkiStatus),
+            Asn1Helper.EncodeInteger((int)PkiStatus.Success))
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPmessageType),
-            Asn1Helper.EncodeInteger((int)PKIMessageType.CertRep))
+            new Oid(oidScepMessageType),
+            Asn1Helper.EncodeInteger((int)PkiMessageType.CertRep))
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPsenderNonce),
+            new Oid(oidScepSenderNonce),
             Asn1Helper.EncodeOctetString(SenderNonce)) // Используем существующий nonce, а не создаем новый
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPrecipientNonce),
+            new Oid(oidScepRecipientNonce),
             Asn1Helper.EncodeOctetString(SenderNonce)) // Используем SenderNonce как RecipientNonce
         );
 
@@ -393,12 +383,12 @@ public class PKIMessage
         return new PKIMessage
         {
             Raw = rawResponse,
-            MessageType = PKIMessageType.CertRep,
-            TransactionID = TransactionID,
+            MessageType = PkiMessageType.CertRep,
+            TransactionId = TransactionId,
             SenderNonce = SenderNonce, // Используем существующий, а не создаем новый
             CertRepMessage = new CertRepMessage
             {
-                PKIStatus = PKIStatus.Success,
+                PKIStatus = PkiStatus.Success,
                 RecipientNonce = SenderNonce, // Используем SenderNonce
                 Certificate = signedCert
             },
@@ -408,7 +398,7 @@ public class PKIMessage
         };
     }
 
-    public PKIMessage CreateFailResponse(PKIFailInfo failInfo)
+    public PKIMessage CreateFailResponse(PkiFailInfo failInfo)
     {
         // Create signed response (no encrypted content needed for failure)
         var signedData = new SignedCms(new ContentInfo(new byte[0]));
@@ -416,32 +406,32 @@ public class PKIMessage
 
         // Add SCEP attributes
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPtransactionID),
-            Encoding.ASCII.GetBytes(TransactionID))
+            new Oid(oidScepTransactionId),
+            Encoding.ASCII.GetBytes(TransactionId))
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPmessageType),
-            BitConverter.GetBytes((int)PKIMessageType.CertRep))
+            new Oid(oidScepMessageType),
+            BitConverter.GetBytes((int)PkiMessageType.CertRep))
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPsenderNonce),
+            new Oid(oidScepSenderNonce),
             NewNonce())
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPpkiStatus),
-            BitConverter.GetBytes((int)PKIStatus.Failure))
+            new Oid(oidScepPkiStatus),
+            BitConverter.GetBytes((int)PkiStatus.Failure))
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPrecipientNonce),
+            new Oid(oidScepRecipientNonce),
             SenderNonce)
         );
 
         signer.SignedAttributes.Add(new AsnEncodedData(
-            new Oid(oidSCEPfailInfo),
+            new Oid(oidScepFailInfo),
             BitConverter.GetBytes((int)failInfo))
         );
 
@@ -451,12 +441,12 @@ public class PKIMessage
         return new PKIMessage
         {
             Raw = rawResponse,
-            MessageType = PKIMessageType.CertRep,
-            TransactionID = TransactionID,
+            MessageType = PkiMessageType.CertRep,
+            TransactionId = TransactionId,
             SenderNonce = NewNonce(),
             CertRepMessage = new CertRepMessage
             {
-                PKIStatus = PKIStatus.Failure,
+                PKIStatus = PkiStatus.Failure,
                 RecipientNonce = SenderNonce,
                 FailInfo = failInfo
             },

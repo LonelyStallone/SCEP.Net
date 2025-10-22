@@ -1,7 +1,7 @@
 using System.Text;
-using SCEP.Net.Models;
 using Microsoft.AspNetCore.Mvc;
 using SCEP.Net.Services.Abstractions;
+using SCEP.Net.Controllers.Models;
 
 namespace SCEP.Net;
 
@@ -10,9 +10,9 @@ namespace SCEP.Net;
 [Route("scep")]
 public class SCEPController : ControllerBase
 {
-    private readonly ISCEPService _service;
+    private readonly IScepService _service;
 
-    public SCEPController(ISCEPService service)
+    public SCEPController(IScepService service)
     {
         _service = service;
     }
@@ -68,41 +68,40 @@ public class SCEPController : ControllerBase
     {
         return request.Operation switch
         {
-            "GetCACaps" => await CreateGetCACapsAsync(request, Request.HttpContext.RequestAborted),
+            "GetCACaps" => CreateGetCACaps(request),
             "GetCACert" => await CreatGetCACertAsync(request, Request.HttpContext.RequestAborted),
-            "PKIOperation" => await CreatPKIOperationAsync(request, Request.HttpContext.RequestAborted),
+            "PKIOperation" => await CreatPkiOperationAsync(request, Request.HttpContext.RequestAborted),
             _ => throw new NotSupportedException($"Operation {request.Operation} not supported")
         };
     }
 
-    private async Task<SCEPResponse> CreateGetCACapsAsync(SCEPRequest request, CancellationToken cancellation)
+    private SCEPResponse CreateGetCACaps(SCEPRequest request)
     {
         return new SCEPResponse
         {
-            Data = await _service.GetCACapsAsync(Request.HttpContext.RequestAborted),
+            Data = _service.GetCaCaps(),
             Operation = request.Operation
         };
     }
 
     private async Task<SCEPResponse> CreatGetCACertAsync(SCEPRequest request, CancellationToken cancellation)
     {
-        var (data, certNum) = await _service.GetCACertAsync(
-            Encoding.UTF8.GetString(request.Message),
-            Request.HttpContext.RequestAborted);
+        var message = Encoding.UTF8.GetString(request.Message);
+        var (data, certificatesCount) = _service.GetCaCert(message);
 
         return new SCEPResponse
         {
             Data = data,
-            CACertNum = certNum,
+            CACertNum = certificatesCount,
             Operation = request.Operation
         };
     }
 
-    private async Task<SCEPResponse> CreatPKIOperationAsync(SCEPRequest request, CancellationToken cancellation)
+    private async Task<SCEPResponse> CreatPkiOperationAsync(SCEPRequest request, CancellationToken cancellation)
     {
         return new SCEPResponse
         {
-            Data = await _service.PKIOperationAsync(request.Message, cancellation),
+            Data = await _service.PkiOperationAsync(request.Message, cancellation),
             Operation = request.Operation
         };
     }

@@ -33,6 +33,7 @@ public static class ChallengePasswordHelper
         {
             // Ignore parsing errors - challenge password is optional
         }
+
         return null;
     }
 }

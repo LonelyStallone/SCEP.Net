@@ -1,20 +1,11 @@
 ﻿using System.Numerics;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography;
-using Microsoft.Extensions.Options;
-using SCEP.Net.Services.Options;
 
 namespace SCEP.Net.Services.Abstractions;
 
 public interface IDepot
 {
-    /// <summary>
-    /// Retrieves the CA certificate and private key
-    /// </summary>
-    /// <param name="password">Password to access the CA</param>
-    /// <returns>Tuple containing CA certificates, private key</returns>
-    Task<(X509Certificate2[], RSA)> GetCAAsync(string password, CancellationToken cancellationToken);
-
     /// <summary>
     /// Stores a certificate in the depot
     /// </summary>
@@ -43,6 +34,4 @@ public interface IDepot
         X509Certificate2 certificate,
         bool revokeOldCertificate,
         CancellationToken cancellationToken);
-
-    Task InitilizeCaAsync(IOptions<BoltDepotOptions> options, CancellationToken cancellationToken);
 }

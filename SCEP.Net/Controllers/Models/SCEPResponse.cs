@@ -1,4 +1,4 @@
-﻿namespace SCEP.Net.Models;
+﻿namespace SCEP.Net.Controllers.Models;
 
 public class SCEPResponse
 {

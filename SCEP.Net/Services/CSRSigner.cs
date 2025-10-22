@@ -4,48 +4,47 @@ using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.X509;
-using SCEP.Net.Models;
 using SCEP.Net.Services.Abstractions;
 using SCEP.Net.Services.Enums;
 using SCEP.Net.Services.Options;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using X509Certificate = Org.BouncyCastle.X509.X509Certificate;
 
 namespace SCEP.Net.Services;
 
-public class CSRSigner : ICSRSigner
+public class CsrSigner : ICsrSigner
 {
     private readonly IDepot _depot;
-    private readonly string _caPass;
     private readonly int _allowRenewalDays;
     private readonly int _validityDays;
     private readonly bool _serverAttrs;
     private readonly SignatureAlgorithm _signatureAlgorithm;
 
-    public CSRSigner(IDepot depot, IOptions<CSRSignerOptions> options)
+    public CsrSigner(IDepot depot, IOptions<CsrSignerOptions> options)
     {
         _depot = depot;
-        _caPass = options.Value.CAPass;
         _allowRenewalDays = options.Value.AllowRenewalDays;
         _validityDays = options.Value.ValidityDays;
         _serverAttrs = options.Value.ServerAttrs;
         _signatureAlgorithm = options.Value.SignatureAlgorithm;
     }
 
-    public async Task<X509Certificate2> SignCSRAsync(CSRReqMessage csrReq, CancellationToken cancellationToken)
+    public async Task<X509Certificate2> SignCsrAsync(
+        X509Certificate2 caCertificate,
+        RSA caKey,
+        Pkcs10CertificationRequest csr,
+        System.Numerics.BigInteger serialNumber,
+        CancellationToken cancellationToken)
     {
         // Generate subject key ID
-        var subjectKeyId = GenerateSubjectKeyId(csrReq.CSR.GetPublicKey());
-
-        // Get next serial number
-        var serialNumber = await _depot.GetSerialAsync(cancellationToken);
+        var subjectKeyId = GenerateSubjectKeyId(csr.GetPublicKey());
 
         // Get CA cert and key
-        var (caCerts, caKey) = await _depot.GetCAAsync(_caPass, cancellationToken);
-        var caCert = caCerts[0];
-        var caBouncyCert = DotNetUtilities.FromX509Certificate(caCert);
+        var caBouncyCert = DotNetUtilities.FromX509Certificate(caCertificate);
         var caPrivateKey = DotNetUtilities.GetRsaKeyPair(caKey).Private;
 
         // Create certificate generator
@@ -54,8 +53,8 @@ public class CSRSigner : ICSRSigner
         // Set certificate fields
         certificateGenerator.SetSerialNumber(new BigInteger(serialNumber.ToByteArray()));
         certificateGenerator.SetIssuerDN(caBouncyCert.SubjectDN);
-        certificateGenerator.SetSubjectDN(csrReq.CSR.GetCertificationRequestInfo().Subject);
-        certificateGenerator.SetPublicKey(csrReq.CSR.GetPublicKey());
+        certificateGenerator.SetSubjectDN(csr.GetCertificationRequestInfo().Subject);
+        certificateGenerator.SetPublicKey(csr.GetPublicKey());
 
         // Set validity period
         var now = DateTime.UtcNow;

@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Options;
-using SCEP.Net.Services.Abstractions;
-using SCEP.Net.Services.Options;
+﻿using SCEP.Net.Services.Abstractions;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -71,36 +69,5 @@ public class BoltDepot : IDepot
         CancellationToken cancellationToken)
     {
         return await _dbAdapter.HasCnAsync(commonName, certificate, cancellationToken);
-    }
-
-    public async Task InitilizeCaAsync(IOptions<BoltDepotOptions> options, CancellationToken cancellationToken)
-    {
-        var boltOptions = options.Value;
-        using var rsa = RSA.Create();
-        rsa.ImportFromPem(boltOptions.CertKey);
-
-        var certificate = GetCertificateFromPem(boltOptions.CertPem);
-
-        await InitilizeCaAsync(rsa, certificate, cancellationToken);
-    }
-
-    private async Task InitilizeCaAsync(RSA key, X509Certificate2 certificate2, CancellationToken cancellationToken)
-    {
-        await _dbAdapter.SetValueAsync("ca_key", key.ExportPkcs8PrivateKey(), cancellationToken);
-        await _dbAdapter.SetValueAsync("ca_certificate", certificate2.RawData, cancellationToken);
-    }
-
-    private static X509Certificate2 GetCertificateFromPem(string pemString)
-    {
-        // Удаляем заголовки и подвалы PEM
-        string base64 = pemString
-            .Replace("-----BEGIN CERTIFICATE-----", "")
-            .Replace("-----END CERTIFICATE-----", "")
-            .Replace("\n", "")
-            .Replace("\r", "")
-            .Trim();
-
-        byte[] certData = Convert.FromBase64String(base64);
-        return new X509Certificate2(certData);
     }
 }

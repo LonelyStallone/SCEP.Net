@@ -3,7 +3,7 @@
 using SCEP.Net.Services.Abstractions;
 using System.Numerics;
 
-public class DbSerialNumberGenerator : ISerialNumberGenerator
+public class SerialNumberGenerator : ISerialNumberGenerator
 {
     private const string StorageKey = "serial";
 
@@ -11,7 +11,7 @@ public class DbSerialNumberGenerator : ISerialNumberGenerator
 
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-    public DbSerialNumberGenerator(IDbAdapter dbAdapter)
+    public SerialNumberGenerator(IDbAdapter dbAdapter)
     {
         _dbAdapter = dbAdapter;
     }
@@ -21,15 +21,8 @@ public class DbSerialNumberGenerator : ISerialNumberGenerator
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
-            var currentValue = new BigInteger(1);
-            // Получаем текущее значение из базы данных
             var currentValueBytes = await _dbAdapter.GetValueAsync(StorageKey, cancellationToken);
-
-            if (currentValueBytes != null && currentValueBytes.Length > 0)
-            {
-                // Конвертируем байты обратно в BigInteger
-                currentValue = new BigInteger(currentValueBytes, isUnsigned: true);
-            }
+            var currentValue = GetActualValue(currentValueBytes);
 
             // Инкрементируем значение
             var nextValue = currentValue + 1;
@@ -44,5 +37,17 @@ public class DbSerialNumberGenerator : ISerialNumberGenerator
         {
             _semaphore.Release();
         }
+    }
+
+    private BigInteger GetActualValue(byte[]? currentValueBytes)
+    {
+        if (currentValueBytes != null && currentValueBytes.Length > 0)
+        {
+            // Конвертируем байты обратно в BigInteger
+            return new BigInteger(currentValueBytes, isUnsigned: true);
+        }
+
+        // Инкрементируем значение
+        return new BigInteger(1);
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace SCEP.Net.Services.Enums;
 
-public enum PKIFailInfo
+public enum PkiFailInfo
 {
     BadAlg = 0,
     BadMessageCheck = 1,

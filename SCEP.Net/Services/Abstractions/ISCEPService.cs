@@ -1,12 +1,15 @@
-﻿namespace SCEP.Net.Services.Abstractions;
+﻿using Org.BouncyCastle.Crypto.Signers;
+using SCEP.Net.Services.Enums;
 
-public interface ISCEPService
+namespace SCEP.Net.Services.Abstractions;
+
+public interface IScepService
 {
-    Task<byte[]> GetCACapsAsync(CancellationToken cancellationToken);
+    byte[] GetCaCaps();
 
-    Task<(byte[] data, int certNum)> GetCACertAsync(string message, CancellationToken cancellationToken);
+    (byte[] Data, int CertificatesCount) GetCaCert(string message);
 
-    Task<byte[]> PKIOperationAsync(byte[] msg, CancellationToken cancellationToken);
+    Task<byte[]> PkiOperationAsync(byte[] data, CancellationToken cancellationToken);
 
-    Task<byte[]> GetNextCACertAsync(CancellationToken cancellationToken);
+    Task<byte[]> GetNextCaCertAsync(CancellationToken cancellationToken);
 }

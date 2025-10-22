@@ -1,6 +1,6 @@
 ﻿namespace SCEP.Net.Services.Enums;
 
-public enum PKIStatus
+public enum PkiStatus
 {
     Success = 0,
     Failure = 2,

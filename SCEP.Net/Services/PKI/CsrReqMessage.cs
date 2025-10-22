@@ -3,14 +3,19 @@ using System.Security.Cryptography;
 using Org.BouncyCastle.Pkcs;
 using SCEP.Net.Services.Enums;
 
-namespace SCEP.Net.Models;
+namespace SCEP.Net.Services.PKI;
 
-public class CSRReqMessage
+public class CsrReqMessage
 {
-    public Pkcs10CertificationRequest CSR { get; set; }
+    public Pkcs10CertificationRequest Csr { get; set; }
+
     public string ChallengePassword { get; set; }
+
     public X509Certificate2 SignerCert { get; set; }
+
     public RSA SignerKey { get; set; }
+
     public byte[] RawDecrypted { get; set; }
-    public PKIStatus Status { get; set; }
+
+    public PkiStatus Status { get; set; }
 }

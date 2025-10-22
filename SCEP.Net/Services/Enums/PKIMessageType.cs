@@ -1,6 +1,6 @@
 ﻿namespace SCEP.Net.Services.Enums;
 
-public enum PKIMessageType
+public enum PkiMessageType
 {
     CertRep = 3,
     RenewalReq = 17,

@@ -1,13 +1,12 @@
 using AutoFixture;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Org.BouncyCastle.Pkcs;
 using SCEP.Net.Services;
 using SCEP.Net.Services.Enums;
 using SCEP.Net.Services.Options;
 using SCEP.Net.Tests.Utils;
-using Shouldly;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -17,84 +16,98 @@ public class DebugTests
 {
     private readonly Fixture _fixture = new();
 
+    private readonly SqliteDbAdapterOptions _sqliteDbAdapterOptions;
+    private readonly SqliteDbAdapter _adapter;
+
+    private readonly SerialNumberGenerator _serialNumberGenerator;
+
     private readonly BoltDepot _boltDepot;
 
-    private readonly CSRSignerOptions _cSRSignerOptions;
+    private readonly CsrSignerOptions _csrSignerOptions;
+    private readonly CsrSigner _csrSigner;
+
+    private readonly CaCertificatesOptions _caCertificatesOptions;
+    private readonly CaCertificatesStorage _caCertificatesStorage;
+
+    private readonly ScepService _scepService;
 
     public DebugTests()
     {
-        //var path = _fixture.Create<string>() + "_test.db";
-        //_boltDepot = new BoltDepot(path);
-        //
-        //_cSRSignerOptions = new CSRSignerOptions
-        //{
-        //    AllowRenewalDays = 14,
-        //    ValidityDays = 365
-        //};
+        var path = _fixture.Create<string>() + "_test.db";
 
+        _sqliteDbAdapterOptions = new SqliteDbAdapterOptions
+        {
+            ConnectionString = $"Data Source={path}.db"
+        };
+
+        _adapter = new SqliteDbAdapter(new OptionsWrapper<SqliteDbAdapterOptions>(_sqliteDbAdapterOptions));
+
+        _serialNumberGenerator = new SerialNumberGenerator(_adapter);
+
+        _boltDepot = new BoltDepot(_serialNumberGenerator, _adapter);
+
+        _csrSignerOptions = new CsrSignerOptions
+        {
+            AllowRenewalDays = 14,
+            ValidityDays = 365
+        };
+
+        _csrSigner = new CsrSigner(_boltDepot, (new OptionsWrapper<CsrSignerOptions>(_csrSignerOptions)));
+
+        _caCertificatesOptions = DataGenerator.CreateCaCertificatesOptions(5, "MicroMDM", "US");
+        _caCertificatesStorage = new CaCertificatesStorage(new OptionsWrapper<CaCertificatesOptions>(_caCertificatesOptions));
+
+        _scepService = new ScepService(
+           _serialNumberGenerator,
+           _caCertificatesStorage,
+           _csrSigner,
+            new Mock<ILogger<ScepService>>().Object);
     }
 
     [Fact]
-    public async Task GetCACertAsync5_ShouldReturnCa_WhenCalled()
+    public async Task GetCACertAsync_ShouldReturnCa_WhenCalled()
     {
-        // Arrange
-        //var keySize = 2048;
-        //var key = await _boltDepot.CreateOrLoadKeyAsync(keySize, CancellationToken.None);
-        //var ca = await _boltDepot.CreateOrLoadCAAsync(key, 5, "MicroMDM", "US", CancellationToken.None);
-        //var (certsFromDepot, keyFromDepot) = await _boltDepot.GetCAAsync(_fixture.Create<string>(), CancellationToken.None);
-        //
-        //var caCertificat = certsFromDepot.Single();
-        //var privateKey = keyFromDepot;
-        //var csrSigner = new CSRSigner(_boltDepot, _cSRSignerOptions);
-        //var logger = new Mock<ILogger<SCEPService>>().Object;
-        //
-        //var scepService = new SCEPService(
-        //   caCertificat,
-        //   privateKey,
-        //   csrSigner,
-        //   logger,
-        //   Array.Empty<X509Certificate2>().ToList());
-        //
-        //var selfKey = RSA.Create(keySize);
-        //var csr = CsrBuilder.GenerateCSR(selfKey, "ou", "loc", "province", "RU", "cname", "org");
-        //var signerCert = X509Certificate2Builder.SelfSign(selfKey, csr);
-        //
-        //var rootStore = new X509Certificate2Collection();
-        //rootStore.Add(ca);
-        //
-        //var serCollector = new List<byte[]>();
-        //
-        //for (int i = 0; i < 5; i++)
-        //{
-        //    // check CA
-        //    var (caBytes, num) = await scepService.GetCACertAsync(_fixture.Create<string>(), CancellationToken.None);
-        //
-        //    // create scep "client" request
-        //    var tmpl = new PKIMessage
-        //    {
-        //        MessageType = PKIMessageType.PKCSReq,
-        //        Recipients = new[] { caCertificat }.ToList(),
-        //        SignerKey = selfKey,
-        //        SignerCert = signerCert,
-        //    };
-        //
-        //
-        //    var message = PKIMessage.NewCSRRequest(csr, tmpl);
-        //
-        //    // submit to service
-        //    var respMsgBytes = await scepService.PKIOperationAsync(message.Raw, CancellationToken.None);
-        //
-        //    // read and decrypt reply
-        //    var respMsg = PKIMessage.Parse(respMsgBytes);
-        //    respMsg.DecryptPKIEnvelope(signerCert, selfKey);
-        //
-        //    // verify issued certificate is from the CA
-        //    VerifyCertificateResponse(
-        //        respMsg.CertRepMessage.Certificate,
-        //        rootStore,
-        //        csr,
-        //        ref serCollector);
-        //}
+        // Arrange        
+        var selfKey = RSA.Create(2048);
+        var csr = CsrBuilder.GenerateCSR(selfKey, "ou", "loc", "province", "RU", "cname", "org");
+        var signerCert = X509Certificate2Builder.SelfSign(selfKey, csr);
+        
+        var rootStore = new X509Certificate2Collection();
+        rootStore.Add(_caCertificatesStorage.Certificate);
+        
+        var serCollector = new List<byte[]>();
+        
+        for (int i = 0; i < 5; i++)
+        {
+            // check CA
+            var (caBytes, num) = _scepService.GetCaCert(_fixture.Create<string>());
+        
+            // create scep "client" request
+            var tmpl = new PKIMessage
+            {
+                MessageType = PkiMessageType.PKCSReq,
+                Recipients = new[] { _caCertificatesStorage.Certificate }.ToList(),
+                SignerKey = selfKey,
+                SignerCert = signerCert,
+            };
+        
+        
+            var message = PKIMessage.NewCSRRequest(csr, tmpl);
+        
+            // submit to service
+            var respMsgBytes = await _scepService.PkiOperationAsync(message.Raw, CancellationToken.None);
+        
+            // read and decrypt reply
+            var respMsg = PKIMessage.Parse(respMsgBytes);
+            respMsg.DecryptPKIEnvelope(signerCert, selfKey);
+        
+            // verify issued certificate is from the CA
+            VerifyCertificateResponse(
+                respMsg.CertRepMessage.Certificate,
+                rootStore,
+                csr,
+                ref serCollector);
+        }
     }
 
     private void VerifyCertificateResponse(

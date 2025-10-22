@@ -1,9 +1,8 @@
 ﻿using SCEP.Net.Services.Enums;
-using System.Security.Cryptography.X509Certificates;
 
 namespace SCEP.Net.Services.Options;
 
-public class CSRSignerOptions
+public class CsrSignerOptions
 {
     public string CAPass { get; set; } = string.Empty;
 
