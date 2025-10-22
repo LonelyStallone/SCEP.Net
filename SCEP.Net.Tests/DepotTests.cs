@@ -9,6 +9,7 @@ using SCEP.Net.Services.Options;
 using SCEP.Net.Tests.Utils;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 
 namespace SCEP.Net.Tests;
 
@@ -67,7 +68,16 @@ public class DebugTests
     [Fact]
     public async Task GetCACertAsync_ShouldReturnCa_WhenCalled()
     {
-        // Arrange        
+        // Arrange     
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true, // Включение отступов
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase // Опционально: camelCase для свойств
+        };
+
+        var json = JsonSerializer.Serialize(_caCertificatesOptions, options);
+        File.WriteAllText("ca.json", json);
+
         var selfKey = RSA.Create(2048);
         var csr = CsrBuilder.GenerateCSR(selfKey, "ou", "loc", "province", "RU", "cname", "org");
         var signerCert = X509Certificate2Builder.SelfSign(selfKey, csr);

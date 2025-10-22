@@ -1,7 +1,4 @@
-﻿using Org.BouncyCastle.Crypto.Signers;
-using SCEP.Net.Services.Enums;
-
-namespace SCEP.Net.Services.Abstractions;
+﻿namespace SCEP.Net.Services.Abstractions;
 
 public interface IScepService
 {

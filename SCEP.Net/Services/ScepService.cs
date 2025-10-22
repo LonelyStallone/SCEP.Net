@@ -24,12 +24,16 @@ public class ScepService : IScepService
 
     public byte[] GetCaCaps()
     {
+        _logger.LogInformation($"GetCaCert.");
+
         var defaultCaps = "Renewal\nSHA-1\nSHA-256\nAES\nDES3\nSCEPStandard\nPOSTPKIOperation";
         return System.Text.Encoding.UTF8.GetBytes(defaultCaps);
     }
 
     public (byte[] Data, int CertificatesCount) GetCaCert(string message)
     {
+        _logger.LogInformation($"GetCaCert: {message}");
+
         var degenerateCerts = GetDegenerateCertificates();
 
         return (degenerateCerts, _caCertificatesStorage.AdditionalCertificates.Count + 1);
@@ -37,6 +41,7 @@ public class ScepService : IScepService
 
     public async Task<byte[]> PkiOperationAsync(byte[] data, CancellationToken cancellationToken)
     {
+        _logger.LogInformation($"PkiOperation: {Convert.ToBase64String(data)}");
         var msg = PKIMessage.Parse(data);
         try
         {
