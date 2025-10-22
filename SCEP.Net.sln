@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SCEP.Net", "SCEP.Net\SCEP.N
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SCEP.Net.Tests", "SCEP.Net.Tests\SCEP.Net.Tests.csproj", "{FD902B7D-B2CE-44E6-9216-B182291A50BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SCEP.Net.Client", "SCEP.Net.Client\SCEP.Net.Client.csproj", "{D49865CB-15B1-4AE8-B1EE-4A6B035E6004}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,10 +21,6 @@ Global
 		{FD902B7D-B2CE-44E6-9216-B182291A50BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FD902B7D-B2CE-44E6-9216-B182291A50BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FD902B7D-B2CE-44E6-9216-B182291A50BE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D49865CB-15B1-4AE8-B1EE-4A6B035E6004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D49865CB-15B1-4AE8-B1EE-4A6B035E6004}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D49865CB-15B1-4AE8-B1EE-4A6B035E6004}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D49865CB-15B1-4AE8-B1EE-4A6B035E6004}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
